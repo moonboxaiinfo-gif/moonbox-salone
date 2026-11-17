@@ -1,0 +1,21 @@
+# Never send secrets or local configuration to the Docker build context
+.env
+.env.*
+!.env.example
+*.env
+**/*secret*
+**/*credential*
+
+# Exclude host-managed and generated files
+.git
+.gitignore
+node_modules
+**/node_modules
+.netlify
+coverage
+dist
+build
+out
+*.log
+.DS_Store
+Thumbs.db

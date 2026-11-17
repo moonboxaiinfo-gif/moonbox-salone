@@ -1,0 +1,303 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Moonbox Salon Champagne Luxury identity: distinct light and dark palettes. */
+@layer base {
+  :root {
+    --mb-bg: #F6F1E8;
+    --mb-surface: #FFFCF6;
+    --mb-elevated: #EFE5D6;
+    --mb-text: #352638;
+    --mb-muted: #786D70;
+    --mb-border: rgba(53, 38, 56, 0.14);
+    --mb-primary: #9A7440;
+    --mb-violet: #B18A53;
+    --mb-cyan: #D5B77D;
+    --mb-lavender: #EFE3D0;
+    --mb-success: #168568;
+    --mb-navy: #352638;
+    --mb-section-deep: #EDE3D5;
+    --mb-section-text: #352638;
+    --mb-accent: #9A7440;
+    --mb-overlay: #352638;
+  }
+
+  .dark {
+    --mb-bg: #17151A;
+    --mb-surface: #252129;
+    --mb-elevated: #302832;
+    --mb-text: #F7F0E7;
+    --mb-muted: #C5B9C3;
+    --mb-border: rgba(247, 240, 231, 0.13);
+    --mb-primary: #D5B77D;
+    --mb-violet: #B98C56;
+    --mb-cyan: #E2C995;
+    --mb-lavender: rgba(213, 183, 125, 0.14);
+    --mb-success: #55C49B;
+    --mb-navy: #17151A;
+    --mb-section-deep: #211B24;
+    --mb-section-text: #F7F0E7;
+    --mb-accent: #D5B77D;
+    --mb-overlay: #17151A;
+  }
+}
+
+@layer utilities {
+  .bg-card { background-color: var(--mb-surface); }
+  .bg-lavender { background-color: var(--mb-lavender); }
+  .bg-navy { background-color: var(--mb-navy); }
+  .bg-gradient-primary { background-image: linear-gradient(135deg, var(--mb-primary), var(--mb-cyan)); }
+  .bg-hero { background: radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--mb-violet) 16%, transparent), transparent 36%), radial-gradient(circle at 88% 28%, color-mix(in srgb, var(--mb-cyan) 18%, transparent), transparent 32%), var(--mb-bg); }
+  .text-foreground { color: var(--mb-text); }
+  .text-muted-foreground { color: var(--mb-muted); }
+  .text-primary { color: var(--mb-primary); }
+  .text-success { color: var(--mb-success); }
+  .text-primary-foreground { color: #fff; }
+  .border-border { border-color: var(--mb-border); }
+  .shadow-soft { box-shadow: 0 12px 32px rgba(53, 38, 56, 0.08); }
+  .shadow-float { box-shadow: 0 28px 80px rgba(53, 38, 56, 0.16); }
+  .shadow-glow { box-shadow: 0 16px 44px color-mix(in srgb, var(--mb-primary) 26%, transparent); }
+  .text-gradient { background: linear-gradient(110deg, var(--mb-primary), var(--mb-violet) 52%, var(--mb-cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .glass { background: color-mix(in srgb, var(--mb-surface) 76%, transparent); backdrop-filter: blur(18px); }
+  .cinematic-sweep { position: relative; isolation: isolate; }
+  .cinematic-sweep::after { content: ""; position: absolute; inset: -35% -15%; z-index: -1; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(56, 221, 245, 0.08) 48%, rgba(161, 107, 255, 0.12) 54%, transparent 68%); transform: translateX(-55%); animation: mb-light-sweep 12s ease-in-out infinite; }
+  .moonbox-hero-image { opacity: 0.58; filter: saturate(0.86) contrast(1.02) brightness(0.86); }
+  .dark .moonbox-hero-image { opacity: 0.38; filter: saturate(0.8) contrast(1.08) brightness(0.7); }
+  .moonbox-hero-overlay { background: linear-gradient(180deg, color-mix(in srgb, var(--mb-bg) 15%, transparent) 0%, transparent 42%, color-mix(in srgb, var(--mb-bg) 92%, transparent) 100%); }
+  .dark .moonbox-hero-overlay { background: linear-gradient(180deg, color-mix(in srgb, var(--mb-overlay) 48%, transparent) 0%, transparent 44%, color-mix(in srgb, var(--mb-bg) 92%, transparent) 100%); }
+  .film-grain::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.035; mix-blend-mode: soft-light; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E"); }
+
+  /* Public marketing palette: scoped so internal salon operations keep their existing tokens. */
+  .moonbox-landing {
+    --mb-bg: #f7f4ee;
+    --mb-surface: #fffdf9;
+    --mb-elevated: #edf3fb;
+    --mb-text: #071633;
+    --mb-muted: #61708a;
+    --mb-border: rgba(7, 22, 51, 0.12);
+    --mb-primary: #2454d8;
+    --mb-violet: #315bd4;
+    --mb-cyan: #20cbe5;
+    --mb-lavender: #e8f0fb;
+    --mb-navy: #071633;
+    --mb-section-deep: #071633;
+    --mb-section-text: #f8fbff;
+    --mb-accent: #20cbe5;
+    --mb-overlay: #071633;
+    background: linear-gradient(180deg, #f7f4ee 0%, #f5f8fc 44%, #f7f4ee 100%);
+  }
+  .moonbox-landing #features,
+  .moonbox-landing #pricing,
+  .moonbox-landing #faq {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--mb-elevated) 45%, transparent), transparent 58%);
+  }
+  .moonbox-landing #benefits,
+  .moonbox-landing #demo {
+    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--mb-elevated) 36%, transparent), transparent);
+  }
+  .moonbox-landing .border-border {
+    border-color: color-mix(in srgb, var(--mb-navy) 13%, transparent);
+  }
+  .moonbox-landing .shadow-soft {
+    box-shadow: 0 12px 30px rgba(7, 22, 51, 0.07), 0 2px 8px rgba(36, 84, 216, 0.04);
+  }
+  .moonbox-landing .shadow-float {
+    box-shadow: 0 28px 70px rgba(7, 22, 51, 0.13), 0 8px 20px rgba(36, 84, 216, 0.06);
+  }
+  .dark .moonbox-landing {
+    --mb-bg: #080F20;
+    --mb-surface: #14243F;
+    --mb-elevated: #101D34;
+    --mb-text: #F8FAFC;
+    --mb-muted: #A8B5CC;
+    --mb-border: #263B59;
+    --mb-primary: #2563EB;
+    --mb-violet: #60A5FA;
+    --mb-cyan: #38BDF8;
+    --mb-lavender: rgba(37, 99, 235, 0.16);
+    --mb-navy: #060C19;
+    --mb-section-deep: #0B1428;
+    --mb-section-text: #F8FAFC;
+    --mb-accent: #38BDF8;
+    --mb-overlay: #080F20;
+    --mb-success: #60A5FA;
+    background:
+      radial-gradient(ellipse at 84% 8%, rgba(37, 99, 235, 0.12), transparent 34rem),
+      radial-gradient(ellipse at 8% 42%, rgba(56, 189, 248, 0.045), transparent 30rem),
+      #080F20;
+    color: var(--mb-text);
+  }
+}
+
+/* Landing-page dark theme only; the approved light palette above stays untouched. */
+.dark .moonbox-landing .bg-hero {
+  background:
+    radial-gradient(circle at 14% 12%, rgba(37, 99, 235, 0.18), transparent 34%),
+    radial-gradient(circle at 88% 24%, rgba(56, 189, 248, 0.12), transparent 31%),
+    #080F20;
+}
+.dark .moonbox-landing > section:nth-of-type(1) {
+  background: radial-gradient(ellipse at 72% 40%, rgba(20, 36, 63, 0.42), transparent 58%);
+}
+.dark .moonbox-landing > section:nth-of-type(3) { background: #0D192E; }
+.dark .moonbox-landing > section:nth-of-type(4) { background: #0B1428; }
+.dark .moonbox-landing > section:nth-of-type(5) {
+  background: linear-gradient(180deg, #080F20 0%, #0D192E 52%, #080F20 100%);
+}
+.dark .moonbox-landing > section:nth-of-type(6) {
+  background: radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.11), transparent 55%), #101D34;
+}
+.dark .moonbox-landing > section:nth-of-type(7) { background: #0D192E; }
+.dark .moonbox-landing > section:nth-of-type(8) { background: #080F20; }
+.dark .moonbox-landing footer {
+  background: #060C19;
+  border-color: #1E304B;
+}
+.dark .moonbox-landing #features article,
+.dark .moonbox-landing #pricing article {
+  background: linear-gradient(145deg, #192C49 0%, #14243F 100%);
+  border-color: #263B59;
+  box-shadow: 0 18px 48px rgba(2, 8, 23, 0.28), inset 0 1px 0 rgba(147, 197, 253, 0.035);
+}
+.dark .moonbox-landing #features article:hover,
+.dark .moonbox-landing #pricing article:hover { border-color: #31547D; }
+.dark .moonbox-landing #how .bg-white\/\[0\.06\] {
+  background: linear-gradient(145deg, rgba(25, 44, 73, 0.9), rgba(20, 36, 63, 0.76));
+  border-color: #263B59;
+}
+.dark .moonbox-landing .bg-gradient-primary {
+  background-image: linear-gradient(115deg, #2563EB 0%, #3478F6 100%);
+}
+.dark .moonbox-landing .text-gradient {
+  background-image: linear-gradient(105deg, #F8FAFC 4%, #93C5FD 58%, #38BDF8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.dark .moonbox-landing .shadow-glow { box-shadow: 0 12px 34px rgba(37, 99, 235, 0.24); }
+.dark .moonbox-landing :is(button, a):focus-visible {
+  outline: 2px solid #93C5FD;
+  outline-offset: 3px;
+}
+.dark .moonbox-landing :is(button, a)[aria-disabled="true"],
+.dark .moonbox-landing button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+/* Recolor inherited status/chat cues in dark mode without changing light-mode branding. */
+.dark .moonbox-landing [class*="emerald"],
+.dark .moonbox-landing [class*="green"],
+.dark .moonbox-landing [class*="success"] { color: #93C5FD; }
+.dark .moonbox-landing [class*="bg-emerald"],
+.dark .moonbox-landing [class*="bg-green"],
+.dark .moonbox-landing [class*="bg-success"] { background-color: rgba(37, 99, 235, 0.16); }
+.dark .moonbox-landing footer a.fixed {
+  background: #2563EB;
+  box-shadow: 0 12px 32px rgba(37, 99, 235, 0.3);
+}
+
+@keyframes mb-light-sweep {
+  0%, 18% { transform: translateX(-55%) rotate(3deg); opacity: 0; }
+  35%, 65% { transform: translateX(18%) rotate(3deg); opacity: 1; }
+  82%, 100% { transform: translateX(55%) rotate(3deg); opacity: 0; }
+}
+
+@layer base {
+  :root {
+    --brand-bg: #F6F1E8;
+    --brand-surface: #FFFCF6;
+    --brand-surface-elevated: #EFE5D6;
+    --brand-sidebar: #352638;
+    --brand-violet: #9A7440;
+    --brand-lavender: #786D70;
+    --brand-soft-highlight: #D5B77D;
+    --brand-muted-rose: #B98C56;
+    --brand-champagne: #D5B77D;
+    --brand-border: #E6D9C5;
+    --brand-text: #352638;
+    --brand-muted: #786D70;
+    --brand-subtle-surface: rgba(213, 183, 125, 0.13);
+  }
+
+  .dark {
+    --brand-bg: #17151A;
+    --brand-surface: #252129;
+    --brand-surface-elevated: #302832;
+    --brand-sidebar: #17151A;
+    --brand-violet: #D5B77D;
+    --brand-lavender: #C5B9C3;
+    --brand-soft-highlight: #D5B77D;
+    --brand-muted-rose: #B98C56;
+    --brand-champagne: #D5B77D;
+    --brand-border: #514653;
+    --brand-text: #F7F0E7;
+    --brand-muted: #C5B9C3;
+    --brand-subtle-surface: rgba(213, 183, 125, 0.12);
+  }
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color: var(--mb-text);
+  background-color: var(--mb-bg);
+  overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+  .cinematic-sweep::after { animation: none !important; opacity: 0 !important; }
+}
+
+.font-display {
+  font-family: 'Cinzel', serif;
+}
+
+.font-serif-luxury {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D8CECA;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #BFAEA8;
+}
+
+/* Print Styles for Invoices & Receipts */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Landing page sections adapt their decorative surfaces to the selected theme. */
+.moonbox-landing #how { background: var(--mb-section-deep) !important; color: var(--mb-section-text) !important; }
+.moonbox-landing #how .text-white, .moonbox-landing #how .text-white\/80, .moonbox-landing #how .text-white\/75, .moonbox-landing #how .text-white\/65, .moonbox-landing #how .text-white\/40 { color: var(--mb-section-text) !important; }
+.moonbox-landing #how .border-white\/10 { border-color: var(--mb-border) !important; }
+.moonbox-landing #how .bg-white\/\[0\.06\], .moonbox-landing #how .bg-white\/\[0\.05\] { background: color-mix(in srgb, var(--mb-surface) 82%, transparent) !important; }
+.moonbox-landing #how .text-\[\#B8A5FF\] { color: var(--mb-accent) !important; }
+.moonbox-landing .cinematic-sweep::after { background: linear-gradient(115deg, transparent 35%, color-mix(in srgb, var(--mb-cyan) 12%, transparent) 48%, color-mix(in srgb, var(--mb-violet) 12%, transparent) 54%, transparent 68%); }

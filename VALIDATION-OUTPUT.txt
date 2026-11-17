@@ -1,0 +1,45 @@
+
+> react-example@0.0.0 lint
+> tsc --noEmit
+
+
+> react-example@0.0.0 test
+> vitest run --run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m/home/ubuntu/moonbox-work[39m
+
+ [32m✓[39m src/services/adminAndTrials.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/services/landingPageService.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/services/supabaseRepository.crud.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/services/storageService.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/services/environmentAndSecurity.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/services/phase4Security.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 2[2mms[22m[39m
+ [32m✓[39m src/services/phase5StorageMigration.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/services/phase7AsyncArchitecture.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/services/supabaseRepository.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m9 passed[39m[22m[90m (9)[39m
+[2m      Tests [22m [1m[32m45 passed[39m[22m[90m (45)[39m
+[2m   Start at [22m 08:35:52
+[2m   Duration [22m 257ms[2m (import 62%, transform 22%, tests 11%, worker 5%)[22m
+
+
+> react-example@0.0.0 build
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+[32m✓[0m 2214 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[0m[32mindex.html                 [0m[1;2m    3.48 kB[0m[2m │ gzip:   1.28 kB[0m
+[2mdist/[0m[2massets/[0m[35mindex-Wxb5fm1d.css  [0m[1;2m  151.05 kB[0m[2m │ gzip:  25.16 kB[0m
+[2mdist/[0m[2massets/[0m[36mindex-BZjcMir9.js   [0m[33;1m1,313.63 kB[0m[2m │ gzip: 329.30 kB[0m
+
+[plugin builtin:vite-reporter] [33;1m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[0m
+✓ built in 422ms
