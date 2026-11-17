@@ -28,6 +28,25 @@ describe('Phase 13 POS and tenant data source contracts', () => {
     expect(migration).toContain('REVOKE INSERT, UPDATE, DELETE ON TABLE public.invoices FROM authenticated');
   });
 
+  it('uses the Supabase-compatible pgcrypto UUID generator instead of uuid-ossp', () => {
+    const initialSchema = read('supabase/migrations/20261013000000_initial_schema.sql');
+    const affectedFiles = [
+      'supabase/migrations/20261013000000_initial_schema.sql',
+      'supabase/migrations/20261028000000_website_portfolio_builder.sql',
+      'supabase/migrations/20261109000001_landing_page_cms.sql',
+      'supabase/migrations/20261111000000_appointment_operations_hardening.sql',
+      'supabase/migrations/20261113000001_pos_atomic_rpc.sql',
+    ];
+
+    expect(initialSchema).toContain('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
+    expect(initialSchema).toContain('gen_random_uuid()');
+    for (const file of affectedFiles) {
+      expect(read(file)).not.toContain('uuid_generate_v4()');
+      expect(read(file)).not.toContain('uuid-ossp');
+      expect(read(file)).toContain('gen_random_uuid()');
+    }
+  });
+
   it('checks tenant ownership for linked customer, service, product, and staff rows', () => {
     expect(migration).toContain('WHERE id = v_customer_id AND salon_id = p_salon_id');
     expect(migration).toContain('WHERE id = v_item_id AND salon_id = p_salon_id AND is_active = TRUE');

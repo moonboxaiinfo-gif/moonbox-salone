@@ -17,6 +17,41 @@ describe('Phase 17 Supabase/Netlify security boundaries', () => {
     expect(migration).toContain('is_salon_manager_or_owner(salon_id)');
   });
 
+  describe('Phase 1 role corrections migration contract', () => {
+    const migration = read('supabase/migrations/20261117180000_phase1_security_corrections.sql');
+
+    it('keeps the migration in one transaction and denies customer/appointment access to unlinked Staff', () => {
+      const transactionMarkers = migration.match(/^\s*(BEGIN|COMMIT)\s*;\s*$/gim) ?? [];
+      expect(transactionMarkers.map((marker) => marker.trim().toUpperCase())).toEqual(['BEGIN;', 'COMMIT;']);
+      expect(migration.trimEnd()).toMatch(/COMMIT;\s*$/i);
+      expect(migration).toContain('Staff are denied until the schema has an explicit auth-user link.');
+      expect(migration).toContain("v_role NOT IN ('owner', 'manager', 'receptionist')");
+      expect(migration).toContain("REVOKE SELECT, INSERT, UPDATE, DELETE ON public.customers FROM anon, authenticated");
+      expect(migration).toContain("REVOKE SELECT, INSERT, UPDATE, DELETE ON public.appointments FROM anon, authenticated");
+    });
+
+    it('uses role-scoped RPCs and keeps payment, invoice, and appointment control fields server-owned', () => {
+      expect(migration).toContain("coalesce(auth.role(), '') NOT IN ('authenticated', 'anon')");
+      expect(migration).toContain('public.get_salon_customers');
+      expect(migration).toContain('public.get_salon_appointments');
+      expect(migration).toContain('public.save_salon_customer');
+      expect(migration).toContain('public.save_salon_appointment');
+      expect(migration).toContain('public.update_salon_appointment_status');
+      expect(migration).toMatch(/payment_status,\s+booking_source, notes/);
+      expect(migration).toContain("'unpaid', coalesce(nullif(p_appointment ->> 'booking_source', ''), 'in_salon')");
+      expect(migration).toContain("booking_source = v_row.booking_source");
+      expect(migration).not.toContain("payment_status = p_appointment");
+    });
+
+    it('derives support sender identity from the authenticated database context', () => {
+      expect(migration).toContain("v_sender_role := 'support'");
+      expect(migration).toContain("v_sender_role := 'tenant'");
+      expect(migration).toContain("auth.jwt() ->> 'email'");
+      expect(migration).not.toContain("v_sender_name := p_sender_name");
+      expect(migration).not.toContain("v_sender_role := p_sender_role");
+    });
+  });
+
   it('keeps bank receipts private, owner-upload-only, tenant scoped, and short-lived for AAL2 review', () => {
     expect(migration).toContain("VALUES ('payment-receipts', 'payment-receipts', FALSE, 5242880");
     expect(migration).toContain('public.is_salon_owner(((storage.foldername(name))[1])::UUID)');
@@ -49,5 +84,11 @@ describe('Phase 17 Supabase/Netlify security boundaries', () => {
     expect(cloudinary).toContain('requireSalonManager');
     expect(cloudinary).toContain('const folder = `moonbox-salon/${manager.salonId}/${payload.purpose}`');
     expect(cloudinary).not.toMatch(/Access-Control-Allow-Origin.*\*/);
+  });
+
+  it('keeps every Phase 17 database and Storage operation inside one transaction', () => {
+    const transactionMarkers = migration.match(/^\s*(BEGIN|COMMIT)\s*;\s*$/gim) ?? [];
+    expect(transactionMarkers.map((marker) => marker.trim().toUpperCase())).toEqual(['BEGIN;', 'COMMIT;']);
+    expect(migration.trimEnd()).toMatch(/COMMIT;\s*$/i);
   });
 });

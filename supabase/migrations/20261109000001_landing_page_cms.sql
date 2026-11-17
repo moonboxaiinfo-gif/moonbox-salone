@@ -1,10 +1,10 @@
--- ============================================================================
+﻿-- ============================================================================
 -- Moonbox Salon SaaS — Phase 02 Landing Page CMS
 -- Platform-level content is separate from tenant salon data.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.landing_page_documents (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   status TEXT NOT NULL CHECK (status IN ('draft', 'published')),
   version INTEGER NOT NULL DEFAULT 1,
   content JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_landing_page_documents_status_updated
   ON public.landing_page_documents (status, updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS public.landing_page_media (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   document_id UUID REFERENCES public.landing_page_documents(id) ON DELETE CASCADE,
   section_key TEXT NOT NULL,
   storage_path TEXT NOT NULL,

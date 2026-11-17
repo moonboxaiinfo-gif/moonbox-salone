@@ -79,10 +79,12 @@ export const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onSuccess, onE
         // Check if user requires TOTP enrollment
         if (res.factorId === 'needs_enrollment' || res.factorId === 'local_totp_factor') {
           const enrollRes = await enrollSuperAdminMFA();
-          if (enrollRes.success && enrollRes.data) {
-            setEnrollmentData(enrollRes.data);
-            setFactorId(enrollRes.data.factorId);
+          if (!enrollRes.success || !enrollRes.data) {
+            setError(enrollRes.error || 'Controlled administrator MFA enrollment is unavailable.');
+            return;
           }
+          setEnrollmentData(enrollRes.data);
+          setFactorId(enrollRes.data.factorId);
         }
 
         setStep('mfa');

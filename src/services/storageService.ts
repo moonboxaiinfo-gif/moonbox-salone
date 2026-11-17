@@ -12,6 +12,7 @@ import {
   Service,
   ServiceCategory,
   Staff,
+  StaffLoginAccount,
   Product,
   ProductCategory,
   Appointment,
@@ -187,6 +188,11 @@ export class StorageService {
     return saved;
   }
 
+  static async staffLoginAccounts(tenantId: string, staffId?: string): Promise<StaffLoginAccount[]> {
+    if (isLocalDemoMode) return [];
+    return this.requireProductionRepository().staffLoginAccounts(tenantId, staffId);
+  }
+
   static async saveAppointmentConfirmed(appointment: Appointment): Promise<{ success: boolean; appointment?: Appointment; error?: string }> {
     if (isLocalDemoMode) {
       const result = this.saveAppointment(appointment);
@@ -288,8 +294,8 @@ export class StorageService {
   }
 
   static async replySupportTicketConfirmed(ticketId: string, senderName: string, senderRole: 'tenant' | 'support', content: string, tenantId: string): Promise<void> {
-    if (isLocalDemoMode) { this.replySupportTicket(ticketId, senderName, senderRole, senderName, content); return; }
-    await this.requireProductionRepository().appendSupportTicketMessage({ ticketId, content, senderName, senderRole });
+    if (isLocalDemoMode) { this.replySupportTicket(ticketId, tenantId, senderRole, senderName, content); return; }
+    await this.requireProductionRepository().appendSupportTicketMessage({ ticketId, content });
     setStorage('support_tickets', await this.requireProductionRepository().supportTickets(tenantId));
   }
 

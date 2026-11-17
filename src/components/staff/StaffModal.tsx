@@ -21,6 +21,9 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   const [position, setPosition] = useState(staff?.position || 'Senior Hair Stylist');
   const [phone, setPhone] = useState(staff?.phone || '');
   const [email, setEmail] = useState(staff?.email || '');
+  const [staffAuthUserId, setStaffAuthUserId] = useState(staff?.authUserId || '');
+  const [staffAccounts, setStaffAccounts] = useState<Array<{ userId: string; fullName: string; email: string }>>([]);
+  const [staffAccountsError, setStaffAccountsError] = useState<string | null>(null);
   const [status, setStatus] = useState<Staff['status']>(staff?.status || 'active');
   const [serviceComm, setServiceComm] = useState(staff?.defaultServiceCommission || 20);
   const [productComm, setProductComm] = useState(staff?.defaultProductCommission || 10);
@@ -34,12 +37,28 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     setPosition(staff?.position || 'Senior Hair Stylist');
     setPhone(staff?.phone || '');
     setEmail(staff?.email || '');
+    setStaffAuthUserId(staff?.authUserId || '');
     setStatus(staff?.status || 'active');
     setServiceComm(staff?.defaultServiceCommission ?? 20);
     setProductComm(staff?.defaultProductCommission ?? 10);
     setColor(staff?.color || '#9E4784');
     setErrorMsg(null);
   }, [isOpen, staff]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setStaffAccountsError(null);
+    void StorageService.staffLoginAccounts(tenantId, staff?.id)
+      .then(accounts => { if (!cancelled) setStaffAccounts(accounts); })
+      .catch(error => {
+        if (!cancelled) {
+          setStaffAccounts([]);
+          setStaffAccountsError(error instanceof Error ? error.message : 'Staff login accounts could not be loaded.');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [isOpen, tenantId, staff?.id]);
 
   if (!isOpen) return null;
 
@@ -60,6 +79,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     const newStaff: Staff = {
       id: staff?.id || `stf_${Date.now()}`,
       tenantId,
+      authUserId: staffAuthUserId || undefined,
       name,
       position,
       phone,
@@ -149,6 +169,25 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                 placeholder="0712345678"
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#9B3E88]"
               />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Staff login account</label>
+              <select
+                value={staffAuthUserId}
+                onChange={event => setStaffAuthUserId(event.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none"
+              >
+                <option value="">No login linked</option>
+                {staffAccounts.map(account => (
+                  <option key={account.userId} value={account.userId}>
+                    {account.fullName} ({account.email})
+                  </option>
+                ))}
+              </select>
+              {staffAccountsError
+                ? <p role="alert" className="mt-1 text-[11px] text-rose-600">{staffAccountsError}</p>
+                : <p className="mt-1 text-[11px] text-slate-500">Only active Staff-role accounts in this salon can be linked. Email matching is not used.</p>}
             </div>
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Staff Email</label>

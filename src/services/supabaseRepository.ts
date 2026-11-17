@@ -14,6 +14,7 @@ import {
   Service,
   ServiceCategory,
   Staff,
+  StaffLoginAccount,
   StaffCommissionRecord,
   StockMovement,
   SubscriptionPlan,
@@ -80,7 +81,7 @@ export function mapSupabaseCustomer(row: Row): Customer {
 
 function mapCategory(row: Row): ServiceCategory { const r = camelizeRow(row); return { id: stringValue(r.id), tenantId: stringValue(r.salonId), name: stringValue(r.name), description: stringValue(r.description) || undefined }; }
 export function mapService(row: Row): Service { const r = camelizeRow(row); return { id: stringValue(r.id), tenantId: stringValue(r.salonId), categoryId: stringValue(r.categoryId), name: stringValue(r.name), description: stringValue(r.description) || undefined, priceLKR: numberValue(r.priceLkr), durationMinutes: numberValue(r.durationMinutes, 45), assignedStaffIds: asArray<string>(r.assignedStaffIds), commissionRate: numberValue(r.commissionRate, 15), isOnlineBookingEnabled: boolValue(r.isOnlineBookingEnabled, true), isActive: boolValue(r.isActive, true) }; }
-export function mapStaff(row: Row): Staff { const r = camelizeRow(row); return { id: stringValue(r.id), tenantId: stringValue(r.salonId), name: stringValue(r.name), position: stringValue(r.position, 'Stylist'), title: stringValue(r.title) || undefined, phone: stringValue(r.phone), email: stringValue(r.email), status: stringValue(r.status, 'active') as Staff['status'], assignedServiceIds: asArray<string>(r.assignedServiceIds), defaultServiceCommission: numberValue(r.defaultServiceCommission, 20), defaultProductCommission: numberValue(r.defaultProductCommission, 10), workingHours: parseJson(r.workingHours, {}), color: stringValue(r.color, '#9E4784'), createdAt: stringValue(r.createdAt) }; }
+export function mapStaff(row: Row): Staff { const r = camelizeRow(row); return { id: stringValue(r.id), tenantId: stringValue(r.salonId), authUserId: stringValue(r.authUserId) || undefined, name: stringValue(r.name), position: stringValue(r.position, 'Stylist'), title: stringValue(r.title) || undefined, phone: stringValue(r.phone), email: stringValue(r.email), status: stringValue(r.status, 'active') as Staff['status'], assignedServiceIds: asArray<string>(r.assignedServiceIds), defaultServiceCommission: numberValue(r.defaultServiceCommission, 20), defaultProductCommission: numberValue(r.defaultProductCommission, 10), workingHours: parseJson(r.workingHours, {}), color: stringValue(r.color, '#9E4784'), createdAt: stringValue(r.createdAt) }; }
 export function mapSupabaseAppointment(row: Row): Appointment { const r = camelizeRow(row); return { id: stringValue(r.id), tenantId: stringValue(r.salonId), customerId: stringValue(r.customerId), customerName: stringValue(r.customerName), customerPhone: stringValue(r.customerPhone), customerEmail: stringValue(r.customerEmail) || undefined, staffId: stringValue(r.staffId), staffName: stringValue(r.staffName), serviceIds: asArray<string>(r.serviceIds), serviceNames: asArray<string>(r.serviceNames), date: stringValue(r.date), startTime: stringValue(r.startTime), endTime: stringValue(r.endTime), durationMinutes: numberValue(r.durationMinutes, 45), totalPriceLKR: numberValue(r.totalPriceLkr), status: stringValue(r.status, 'pending') as Appointment['status'], paymentStatus: stringValue(r.paymentStatus, 'unpaid') as Appointment['paymentStatus'], bookingSource: stringValue(r.bookingSource, 'in_salon') as Appointment['bookingSource'], notes: stringValue(r.notes) || undefined, internalNotes: stringValue(r.internalNotes) || undefined, checkInAt: stringValue(r.checkInAt) || undefined, checkOutAt: stringValue(r.checkOutAt) || undefined, invoiceId: stringValue(r.invoiceId) || undefined, createdAt: stringValue(r.createdAt), updatedAt: stringValue(r.updatedAt) }; }
 
 export const tenantAccessAllowed = (tenantId: string, authorizedTenantIds: string[]): boolean => authorizedTenantIds.includes(tenantId);
@@ -242,11 +243,25 @@ export class SupabaseRepository {
   }
 
   async plans(): Promise<SubscriptionPlan[]> { const { data, error } = await this.client.from('subscription_plans').select('*').eq('is_active', true).order('monthly_price_lkr'); if (error) throw new Error(error.message); return (data || []).map((row) => mapPlan(row as Row)); }
-  async customers(tenantId: string, signal?: AbortSignal): Promise<Customer[]> { return (await this.listRows(tableFor.customers, tenantId, signal)).map(mapSupabaseCustomer); }
+  async customers(tenantId: string, signal?: AbortSignal): Promise<Customer[]> {
+    await this.assertTenantAccess(tenantId);
+    let query = this.client.rpc('get_salon_customers', { p_salon_id: tenantId });
+    if (signal) query = query.abortSignal(signal);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return asArray<Row>(data).map(mapSupabaseCustomer);
+  }
   async serviceCategories(tenantId: string, signal?: AbortSignal): Promise<ServiceCategory[]> { return (await this.listRows(tableFor.categories, tenantId, signal)).map(mapCategory); }
   async services(tenantId: string, signal?: AbortSignal): Promise<Service[]> { return (await this.listRows(tableFor.services, tenantId, signal)).map(mapService); }
   async staff(tenantId: string, signal?: AbortSignal): Promise<Staff[]> { return (await this.listRows(tableFor.staff, tenantId, signal)).map(mapStaff); }
-  async appointments(tenantId: string, signal?: AbortSignal): Promise<Appointment[]> { return (await this.listRows(tableFor.appointments, tenantId, signal)).map(mapSupabaseAppointment); }
+  async appointments(tenantId: string, signal?: AbortSignal): Promise<Appointment[]> {
+    await this.assertTenantAccess(tenantId);
+    let query = this.client.rpc('get_salon_appointments', { p_salon_id: tenantId });
+    if (signal) query = query.abortSignal(signal);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return asArray<Row>(data).map(mapSupabaseAppointment);
+  }
   async productCategories(tenantId: string, signal?: AbortSignal): Promise<ProductCategory[]> { return (await this.listRows(tableFor.productCategories, tenantId, signal)).map(mapProductCategory); }
   async products(tenantId: string, signal?: AbortSignal): Promise<Product[]> { return (await this.listRows(tableFor.products, tenantId, signal)).map(mapProduct); }
   async stockMovements(tenantId: string, signal?: AbortSignal): Promise<StockMovement[]> { return (await this.listRows(tableFor.stockMovements, tenantId, signal)).map(mapStockMovement); }
@@ -299,15 +314,51 @@ export class SupabaseRepository {
 
   async saveCommission(record: StaffCommissionRecord): Promise<StaffCommissionRecord> { const row = await this.writeRow(tableFor.commissions, record.tenantId, record.id, { staff_id: record.staffId, staff_name: record.staffName, invoice_id: record.invoiceId || null, invoice_number: record.invoiceNumber, item_type: record.itemType, item_name: record.itemName, item_amount_lkr: record.itemAmountLKR, commission_percentage: record.commissionPercentage, commission_amount_lkr: record.commissionAmountLKR, status: record.status, paid_at: record.paidAt, created_at: record.createdAt }); return { ...camelizeRow(row), tenantId: record.tenantId } as unknown as StaffCommissionRecord; }
   async deleteCommission(tenantId: string, id: string): Promise<void> { return this.deleteRow(tableFor.commissions, tenantId, id); }
-  async markCommissionPaid(tenantId: string, id: string): Promise<StaffCommissionRecord> { await this.assertTenantAccess(tenantId); const { data, error } = await this.client.from(tableFor.commissions).update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', id).eq('salon_id', tenantId).select().single(); if (error) throw new Error(error.message); if (!data) throw new Error('Commission was not found or could not be settled.'); return { ...camelizeRow(data as Row), tenantId } as unknown as StaffCommissionRecord; }
+  async markCommissionPaid(tenantId: string, id: string): Promise<StaffCommissionRecord> {
+    await this.assertTenantAccess(tenantId);
+    const { data, error } = await this.client.rpc('mark_commission_paid', {
+      p_salon_id: tenantId,
+      p_commission_id: id,
+    });
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Commission was not found or could not be settled.');
+    return { ...camelizeRow(asRecord(data)), tenantId } as unknown as StaffCommissionRecord;
+  }
 
-  async saveSupportTicket(ticket: SupportTicket): Promise<SupportTicket> { await this.assertTenantAccess(ticket.tenantId); const row = { salon_id: ticket.tenantId, salon_name: ticket.salonName, user_email: ticket.userEmail, subject: ticket.subject, category: ticket.category, priority: ticket.priority, status: ticket.status, assigned_to: ticket.assignedTo, messages: ticket.messages, updated_at: ticket.updatedAt }; const { data, error } = ticket.id && isUuidValue(ticket.id) ? await this.client.from(tableFor.supportTickets).update(row).eq('id', ticket.id).eq('salon_id', ticket.tenantId).select().single() : await this.client.from(tableFor.supportTickets).insert(row).select().single(); if (error) throw new Error(error.message); if (!data) throw new Error('Support ticket write returned no record.'); return { ...camelizeRow(data as Row), tenantId: ticket.tenantId } as unknown as SupportTicket; }
+  async saveSupportTicket(ticket: SupportTicket): Promise<SupportTicket> {
+    await this.assertTenantAccess(ticket.tenantId);
+    if (ticket.id && isUuidValue(ticket.id)) {
+      throw new Error('Existing support tickets must use an authorized update operation.');
+    }
+    const initialMessage = ticket.messages[0];
+    if (!initialMessage) throw new Error('A support ticket requires an initial message.');
+    const { data, error } = await this.client.rpc('create_salon_support_ticket', {
+      p_salon_id: ticket.tenantId,
+      p_subject: ticket.subject,
+      p_category: ticket.category,
+      p_priority: ticket.priority,
+      p_content: initialMessage.content,
+    });
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Support ticket creation returned no record.');
+    return { ...camelizeRow(asRecord(data)), tenantId: ticket.tenantId } as unknown as SupportTicket;
+  }
   async deleteSupportTicket(tenantId: string, id: string): Promise<void> { return this.deleteRow(tableFor.supportTickets, tenantId, id); }
   async updateSupportTicketStatus(ticketId: string, status: SupportTicket['status']): Promise<void> { const { data, error } = await this.client.from(tableFor.supportTickets).update({ status, updated_at: new Date().toISOString() }).eq('id', ticketId).select('id').single(); if (error) throw new Error(error.message); if (!data) throw new Error('Support ticket was not found or could not be updated.'); }
 
   async saveManualPayment(payment: ManualPaymentRequest): Promise<ManualPaymentRequest> { await this.assertTenantAccess(payment.tenantId); const row = { salon_id: payment.tenantId, salon_name: payment.salonName, owner_email: payment.ownerEmail, plan_id: payment.planId, plan_name: payment.planName, billing_cycle: payment.billingCycle, amount_lkr: payment.amountLKR, bank_reference: payment.bankReference, payment_date: payment.paymentDate, receipt_url: payment.receiptUrl, receipt_file_name: payment.receiptFileName, notes: payment.notes, status: payment.status, rejection_reason: payment.rejectionReason, reviewed_by: payment.reviewedBy, reviewed_at: payment.reviewedAt }; const { data, error } = payment.id && isUuidValue(payment.id) ? await this.client.from(tableFor.manualPayments).update(row).eq('id', payment.id).eq('salon_id', payment.tenantId).select().single() : await this.client.from(tableFor.manualPayments).insert(row).select().single(); if (error) throw new Error(error.message); if (!data) throw new Error('Payment request write returned no record.'); return { ...camelizeRow(data as Row), tenantId: payment.tenantId } as unknown as ManualPaymentRequest; }
 
-  async updateAppointmentStatus(tenantId: string, id: string, status: Appointment['status']): Promise<Appointment> { await this.assertTenantAccess(tenantId); const { data, error } = await this.client.from(tableFor.appointments).update({ status }).eq('id', id).eq('salon_id', tenantId).select().single(); if (error) throw new Error(error.message); if (!data) throw new Error('Appointment was not found or could not be updated.'); return mapSupabaseAppointment(data as Row); }
+  async updateAppointmentStatus(tenantId: string, id: string, status: Appointment['status']): Promise<Appointment> {
+    await this.assertTenantAccess(tenantId);
+    const { data, error } = await this.client.rpc('update_salon_appointment_status', {
+      p_salon_id: tenantId,
+      p_appointment_id: id,
+      p_status: status,
+    });
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Appointment was not found or could not be updated.');
+    return mapSupabaseAppointment(asRecord(data));
+  }
   async saveCategory(category: ServiceCategory): Promise<ServiceCategory> { const row = await this.writeRow(tableFor.categories, category.tenantId, category.id, { name: category.name, description: category.description }); return mapCategory(row); }
   async saveProductCategory(category: ProductCategory): Promise<ProductCategory> { const row = await this.writeRow(tableFor.productCategories, category.tenantId, category.id, { name: category.name }); return mapProductCategory(row); }
   async saveStockMovement(movement: StockMovement): Promise<StockMovement> { const row = await this.writeRow(tableFor.stockMovements, movement.tenantId, movement.id, { product_id: movement.productId, product_name: movement.productName, type: movement.type, quantity_change: movement.quantityChange, balance_after: movement.balanceAfter, reason: movement.reason, reference_id: movement.referenceId }); return mapStockMovement(row); }
@@ -326,10 +377,67 @@ export class SupabaseRepository {
   async landingPage(status: 'draft' | 'published'): Promise<Row | null> { const { data, error } = await this.client.from('landing_page_documents').select('*').eq('status', status).maybeSingle(); if (error) throw new Error(error.message); return data ? data as Row : null; }
   async saveLandingPage(status: 'draft' | 'published', version: number, content: unknown): Promise<Row> { const { data: userData, error: userError } = await this.client.auth.getUser(); if (userError || !userData.user) throw new Error('An authenticated Super Admin session is required.'); const existing = await this.landingPage(status); const values = { status, version, content, updated_by: userData.user.id, published_at: status === 'published' ? new Date().toISOString() : null }; const query = existing ? this.client.from('landing_page_documents').update(values).eq('id', stringValue(existing.id)) : this.client.from('landing_page_documents').insert({ ...values, created_by: userData.user.id }); const { data, error } = await query.select().single(); if (error) throw new Error(error.message); if (!data) throw new Error('Landing page write returned no record.'); return data as Row; }
 
-  async upsertCustomer(customer: Customer): Promise<Customer> { return mapSupabaseCustomer(await this.upsertRow(tableFor.customers, customer.tenantId, { id: customer.id, name: customer.name, phone: customer.phone, whatsapp: customer.whatsapp, email: customer.email, gender: customer.gender, birthday: customer.birthday, address: customer.address, notes: customer.notes, status: customer.status, total_spent_lkr: customer.totalSpentLKR, visits_count: customer.visitsCount, last_visit_at: customer.lastVisitAt, created_at: customer.createdAt })); }
+  async upsertCustomer(customer: Customer): Promise<Customer> {
+    await this.assertTenantAccess(customer.tenantId);
+    const { data, error } = await this.client.rpc('save_salon_customer', {
+      p_salon_id: customer.tenantId,
+      p_customer: {
+        id: isUuidValue(customer.id) ? customer.id : null,
+        name: customer.name,
+        phone: customer.phone,
+        whatsapp: customer.whatsapp || null,
+        email: customer.email || null,
+        gender: customer.gender || null,
+        birthday: customer.birthday || null,
+        address: customer.address || null,
+        notes: customer.notes || null,
+        status: customer.status,
+      },
+    });
+    if (error) throw new Error(error.message);
+    return mapSupabaseCustomer(asRecord(data));
+  }
   async upsertService(service: Service): Promise<Service> { return mapService(await this.upsertRow(tableFor.services, service.tenantId, { id: service.id, category_id: service.categoryId || null, assigned_staff_ids: service.assignedStaffIds, name: service.name, description: service.description, price_lkr: service.priceLKR, duration_minutes: service.durationMinutes, commission_rate: service.commissionRate, is_online_booking_enabled: service.isOnlineBookingEnabled, is_active: service.isActive })); }
-  async upsertStaff(staff: Staff): Promise<Staff> { return mapStaff(await this.upsertRow(tableFor.staff, staff.tenantId, { id: staff.id, name: staff.name, position: staff.position, phone: staff.phone, email: staff.email, status: staff.status, default_service_commission: staff.defaultServiceCommission, default_product_commission: staff.defaultProductCommission, working_hours: staff.workingHours, color: staff.color })); }
-  async upsertAppointment(appointment: Appointment): Promise<Appointment> { return mapSupabaseAppointment(await this.upsertRow(tableFor.appointments, appointment.tenantId, { id: appointment.id, customer_id: appointment.customerId || null, customer_name: appointment.customerName, customer_phone: appointment.customerPhone, customer_email: appointment.customerEmail, staff_id: appointment.staffId || null, staff_name: appointment.staffName, service_ids: appointment.serviceIds, service_names: appointment.serviceNames, date: appointment.date, start_time: appointment.startTime, end_time: appointment.endTime, duration_minutes: appointment.durationMinutes, total_price_lkr: appointment.totalPriceLKR, status: appointment.status, payment_status: appointment.paymentStatus, booking_source: appointment.bookingSource, notes: appointment.notes, internal_notes: appointment.internalNotes, check_in_at: appointment.checkInAt, check_out_at: appointment.checkOutAt, invoice_id: appointment.invoiceId })); }
+  async upsertStaff(staff: Staff): Promise<Staff> { return mapStaff(await this.upsertRow(tableFor.staff, staff.tenantId, { id: staff.id, auth_user_id: staff.authUserId || null, name: staff.name, position: staff.position, phone: staff.phone, email: staff.email, status: staff.status, default_service_commission: staff.defaultServiceCommission, default_product_commission: staff.defaultProductCommission, working_hours: staff.workingHours, color: staff.color })); }
+  async staffLoginAccounts(tenantId: string, staffId?: string): Promise<StaffLoginAccount[]> {
+    await this.assertTenantAccess(tenantId);
+    const { data, error } = await this.client.rpc('get_salon_staff_accounts', {
+      p_salon_id: tenantId,
+      p_staff_id: staffId || null,
+    });
+    if (error) throw new Error(error.message);
+    return asArray<Row>(data).map((row) => ({
+      userId: stringValue(row.user_id),
+      fullName: stringValue(row.full_name),
+      email: stringValue(row.email),
+    }));
+  }
+  async upsertAppointment(appointment: Appointment): Promise<Appointment> {
+    await this.assertTenantAccess(appointment.tenantId);
+    const { data, error } = await this.client.rpc('save_salon_appointment', {
+      p_salon_id: appointment.tenantId,
+      p_appointment: {
+        id: isUuidValue(appointment.id) ? appointment.id : null,
+        customer_id: isUuidValue(appointment.customerId) ? appointment.customerId : null,
+        customer_name: appointment.customerName,
+        customer_phone: appointment.customerPhone,
+        customer_email: appointment.customerEmail || null,
+        staff_id: isUuidValue(appointment.staffId) ? appointment.staffId : null,
+        staff_name: appointment.staffName,
+        service_ids: appointment.serviceIds.filter(isUuidValue),
+        service_names: appointment.serviceNames,
+        date: appointment.date,
+        start_time: appointment.startTime,
+        end_time: appointment.endTime,
+        duration_minutes: appointment.durationMinutes,
+        status: appointment.status,
+        booking_source: appointment.bookingSource,
+        notes: appointment.notes || null,
+      },
+    });
+    if (error) throw new Error(error.message);
+    return mapSupabaseAppointment(asRecord(data));
+  }
   async createAuditLog(params: Pick<AuditLog, 'tenantId' | 'action' | 'entity' | 'entityId' | 'details'>): Promise<AuditLog> {
     if (!params.tenantId) throw new Error('A tenant ID is required for an audit event.');
     await this.assertTenantAccess(params.tenantId);
@@ -409,12 +517,12 @@ export class SupabaseRepository {
     return asRecord(data);
   }
 
-  async appendSupportTicketMessage(params: { ticketId: string; content: string; senderName: string; senderRole: 'tenant' | 'support' }): Promise<Row> {
+  async appendSupportTicketMessage(params: { ticketId: string; content: string }): Promise<Row> {
     const { data, error } = await this.client.rpc('append_support_ticket_message', {
       p_ticket_id: params.ticketId,
       p_content: params.content,
-      p_sender_name: params.senderName,
-      p_sender_role: params.senderRole,
+      p_sender_name: null,
+      p_sender_role: null,
     });
     if (error) throw new Error(error.message);
     return asRecord(data);

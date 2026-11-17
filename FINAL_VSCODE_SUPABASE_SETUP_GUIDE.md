@@ -1,6 +1,6 @@
 # VS Code and Supabase Setup Guide
 
-This archive is source-only and uses demo/test data. Do not connect this working copy to a production project or apply migrations without an explicitly selected disposable staging project and reviewed backup plan.
+This guide describes local setup and future verification only. The workspace contains 15 local migrations. This task performs no remote database access or writes; do not create a second Supabase project or apply migrations without explicit approval and a reviewed preflight/backup plan.
 
 ## Open and install
 
@@ -11,11 +11,11 @@ This archive is source-only and uses demo/test data. Do not connect this working
 
 ## Migration safety
 
-1. Confirm the Supabase project reference in the CLI and dashboard. Use a disposable staging project, not production.
-2. Back up staging and inspect its migration history (`supabase_migrations.schema_migrations`) against `FINAL_MIGRATION_INVENTORY.md`; do not replay already-applied files blindly.
-3. Review every unapplied migration against the actual schema, table grants, function signatures, row counts/data compatibility, and RLS. The Phase 13 POS migration is new and has not been parsed or executed by this task.
-4. Use the team’s approved Supabase CLI/SQL review process, starting with a dry-run/plan where supported. Apply only reviewed files to disposable staging. Never copy a production `--db-url` into these commands.
-5. Run the staging test plan before any separate production change request. This project is not release-approved by this handover.
+1. Confirm the intended project reference in the CLI and dashboard; do not change the existing link as part of local validation.
+2. Inspect the target migration history (`supabase_migrations.schema_migrations`) against `FINAL_MIGRATION_INVENTORY.md`; do not replay already-applied files blindly.
+3. Review all 15 files against the target schema, table grants, function signatures, data compatibility, and RLS.
+4. A CLI dry-run is read-only and does not parse or execute SQL. Never apply migrations until explicit approval. Never place a production `--db-url` in commands or logs.
+5. Validate SQL and role behavior with an already-approved local/test database, without creating a second Supabase project. Source-contract tests alone do not prove PostgreSQL behavior.
 
 ## Auth, MFA, and first Super Admin
 
@@ -23,8 +23,8 @@ Configure only the needed Auth providers, site/redirect URLs, email verification
 
 ## Local verification
 
-Run `npm run lint`, `npm test -- --run`, and `npm run build`. Use a staging-only test dataset with Salon A and Salon B and separate Owner, Manager, Receptionist, and Staff users. Execute the scenarios in `PHASE16_REMAINING_BLOCKERS.md`; current tests are local unit/source-contract checks only.
+Run `npm run lint`, `npm test -- --run`, and `npm run build`. Use an approved isolated test database with Salon A and Salon B and separate Owner, Manager, Receptionist, and Staff users. Execute the scenarios in `PHASE16_REMAINING_BLOCKERS.md`; frontend/unit/source-contract tests do not establish database RLS or transaction correctness.
 
 ## Current configuration blockers
 
-Supabase staging credentials are intentionally blank/not supplied. Storage buckets and private object policies, all role tests, and full CMS/public API flows remain outstanding. Do not store payment receipt files as publicly accessible URLs. Do not mark this project production-ready until the blockers and staging tests are resolved.
+Remote migration state is intentionally not claimed here. The private `payment-receipts` bucket and object policies are defined in the Phase 17 migration; they are not confirmed installed by this local task. PostgreSQL execution, role/RLS tests, full CMS/public API flows, and deployment configuration remain outstanding. Do not store payment receipt files as publicly accessible URLs or mark this project production-ready until blockers and test-environment validation are resolved.

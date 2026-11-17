@@ -1,4 +1,4 @@
--- Atomic POS invoice boundary. The client must call this RPC instead of
+﻿-- Atomic POS invoice boundary. The client must call this RPC instead of
 -- independently updating inventory and invoice rows.
 CREATE OR REPLACE FUNCTION public.create_pos_invoice(
   p_salon_id UUID,
@@ -29,7 +29,7 @@ BEGIN
   IF (p_invoice ->> 'id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
     v_invoice_id := (p_invoice ->> 'id')::uuid;
   ELSE
-    v_invoice_id := uuid_generate_v4();
+    v_invoice_id := gen_random_uuid();
   END IF;
   IF nullif(p_invoice ->> 'customerId', '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
     v_customer_id := (p_invoice ->> 'customerId')::uuid;

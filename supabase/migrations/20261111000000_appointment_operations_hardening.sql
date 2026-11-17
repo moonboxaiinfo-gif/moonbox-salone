@@ -1,4 +1,4 @@
--- Moonbox Salon appointment operations hardening.
+﻿-- Moonbox Salon appointment operations hardening.
 -- Additive only: this migration does not delete or rewrite existing records.
 
 ALTER TABLE public.appointments
@@ -15,7 +15,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_appointments_salon_idempotency
   WHERE idempotency_key IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS public.appointment_status_history (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   appointment_id UUID NOT NULL REFERENCES public.appointments(id) ON DELETE CASCADE,
   from_status TEXT,

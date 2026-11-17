@@ -1,10 +1,10 @@
--- ==============================================================================
+﻿-- ==============================================================================
 -- MOONBOX SALON SAAS — PRODUCTION POSTGRESQL SCHEMA WITH ROW LEVEL SECURITY (RLS)
 -- Multi-Tenant Database Architecture for Sri Lankan Salon Operations
 -- ==============================================================================
 
 -- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ==============================================================================
 -- 1. SUBSCRIPTION PLANS
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.subscription_plans (
 -- 2. SALONS (TENANTS)
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.salons (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
   tagline TEXT DEFAULT 'Building a smarter salon.',
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS public.platform_admins (
 );
 
 CREATE TABLE IF NOT EXISTS public.salon_members (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('owner', 'manager', 'receptionist', 'staff')),
@@ -97,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_salon_members_salon ON public.salon_members (salo
 -- 4. SALON SUBSCRIPTIONS & MANUAL BANK PAYMENTS
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.salon_subscriptions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   plan_id TEXT NOT NULL REFERENCES public.subscription_plans(id),
   status TEXT NOT NULL DEFAULT 'trial' CHECK (status IN ('trial', 'active', 'past_due', 'expired', 'suspended', 'cancelled')),
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS public.salon_subscriptions (
 );
 
 CREATE TABLE IF NOT EXISTS public.manual_payment_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   salon_name TEXT NOT NULL,
   owner_email TEXT NOT NULL,
@@ -139,7 +139,7 @@ CREATE INDEX IF NOT EXISTS idx_manual_payments_status ON public.manual_payment_r
 -- 5. SERVICES & CATEGORIES
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.service_categories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS public.service_categories (
 );
 
 CREATE TABLE IF NOT EXISTS public.services (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   category_id UUID REFERENCES public.service_categories(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
@@ -167,7 +167,7 @@ CREATE INDEX IF NOT EXISTS idx_services_salon ON public.services (salon_id);
 -- 6. STAFF & WORKING HOURS
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.staff (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   position TEXT NOT NULL DEFAULT 'Stylist',
@@ -188,7 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_staff_salon ON public.staff (salon_id);
 -- 7. CUSTOMERS
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.customers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   phone TEXT NOT NULL,
@@ -213,7 +213,7 @@ CREATE INDEX IF NOT EXISTS idx_customers_phone ON public.customers (salon_id, ph
 -- 8. APPOINTMENTS
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.appointments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   customer_id UUID REFERENCES public.customers(id) ON DELETE SET NULL,
   customer_name TEXT NOT NULL,
@@ -243,14 +243,14 @@ CREATE INDEX IF NOT EXISTS idx_appointments_staff_date ON public.appointments (s
 -- 9. PRODUCTS & INVENTORY
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.product_categories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.products (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   category_id UUID REFERENCES public.product_categories(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
@@ -270,7 +270,7 @@ CREATE TABLE IF NOT EXISTS public.products (
 CREATE INDEX IF NOT EXISTS idx_products_salon ON public.products (salon_id);
 
 CREATE TABLE IF NOT EXISTS public.stock_movements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
   product_name TEXT NOT NULL,
@@ -288,7 +288,7 @@ CREATE INDEX IF NOT EXISTS idx_stock_movements_salon ON public.stock_movements (
 -- 10. INVOICES, SALES & COMMISSIONS
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.invoices (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   invoice_number TEXT NOT NULL,
   customer_id UUID REFERENCES public.customers(id) ON DELETE SET NULL,
@@ -313,7 +313,7 @@ CREATE TABLE IF NOT EXISTS public.invoices (
 CREATE INDEX IF NOT EXISTS idx_invoices_salon ON public.invoices (salon_id);
 
 CREATE TABLE IF NOT EXISTS public.commissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   staff_id UUID NOT NULL REFERENCES public.staff(id) ON DELETE CASCADE,
   staff_name TEXT NOT NULL,
@@ -336,14 +336,14 @@ CREATE INDEX IF NOT EXISTS idx_commissions_staff ON public.commissions (salon_id
 -- 11. EXPENSES & CATEGORIES
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.expense_categories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.expenses (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   category_id UUID REFERENCES public.expense_categories(id) ON DELETE SET NULL,
   category_name TEXT NOT NULL,
@@ -363,7 +363,7 @@ CREATE INDEX IF NOT EXISTS idx_expenses_salon ON public.expenses (salon_id);
 -- 12. SUPPORT TICKETS & ANNOUNCEMENTS & AUDIT LOGS
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.support_tickets (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID REFERENCES public.salons(id) ON DELETE CASCADE,
   salon_name TEXT NOT NULL,
   user_email TEXT NOT NULL,
@@ -378,7 +378,7 @@ CREATE TABLE IF NOT EXISTS public.support_tickets (
 );
 
 CREATE TABLE IF NOT EXISTS public.announcements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   content TEXT NOT NULL,
   type TEXT NOT NULL DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'critical')),
@@ -388,7 +388,7 @@ CREATE TABLE IF NOT EXISTS public.announcements (
 );
 
 CREATE TABLE IF NOT EXISTS public.audit_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID REFERENCES public.salons(id) ON DELETE SET NULL,
   actor_email TEXT NOT NULL,
   actor_role TEXT NOT NULL,

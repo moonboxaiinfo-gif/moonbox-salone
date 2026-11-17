@@ -34,7 +34,7 @@ Apply the existing migrations in order, followed by:
 2. `20261113000000_auth_registration_rpc.sql`
 3. `20261113000001_pos_atomic_rpc.sql`
 
-The new RPCs require the existing tenant helpers, `uuid-ossp`, the appointment overlap trigger, and the `profiles`, `salons`, `salon_members`, `salon_subscriptions`, `subscription_plans`, `customers`, `products`, `stock_movements`, and `invoices` tables. The live project must be backed up and tested in staging before execution.
+The new RPCs require the existing tenant helpers, the `pgcrypto` extension (`gen_random_uuid()`), the appointment overlap trigger, and the `profiles`, `salons`, `salon_members`, `salon_subscriptions`, `subscription_plans`, `customers`, `products`, `stock_movements`, and `invoices` tables. The live project must be backed up and tested in staging before execution.
 
 ## Validation
 

@@ -24,6 +24,16 @@ The uploaded project has been updated for a Supabase + Netlify deployment bounda
 
 The production build still emits an existing large JavaScript-chunk advisory (about 1.35 MB minified). It does not fail the build, but code-splitting/performance follow-up remains desirable.
 
+## Follow-up migration transaction review — 2026-11-17
+
+- Moved the existing `COMMIT;` from after the Phase 17 function comments to the absolute end of `supabase/migrations/20261117000000_phase17_security_boundaries.sql`. The formerly out-of-transaction statements are the private receipt bucket upsert, two Storage policies, manual-payment policies and validation trigger, and website-review moderator policy and immutability trigger. Their order and SQL are unchanged.
+- Confirmed the Phase 17 file has exactly one top-level `BEGIN;` and one `COMMIT;`; `COMMIT;` is the final SQL statement. Added a regression assertion to `src/services/phase17Security.test.ts`.
+- Reviewed Phase 17 policy replacement and dependencies: old policies are explicitly dropped or removed by table-scoped policy loops before replacement; its new service/product-category member SELECT policies do not duplicate policies created in earlier migrations. The migration requires the initial schema, Phase 4 notification/business objects, Phase 12 appointment columns and helpers, and Phase 13 owner/payment/POS corrections; the inventory places it last.
+- Reviewed grants and RLS: the new email-dispatch and review-rate-limit tables enable RLS, revoke client/PUBLIC access, and grant access to `service_role`; the rate-limit RPC is likewise service-role-only. The feature helper is executable by authenticated users because policy expressions use it. Storage receipt access is restricted by a private bucket, salon-owner upload path checks, owner/AAL2-admin read checks, and no Phase 17 update/delete policy. Before applying to any existing project, check `storage.objects` for unrelated permissive policies that could widen access; that catalog was not part of this local-only follow-up.
+- Reviewed all 13 migrations in filename order. No other migration has explicit transaction markers, and no `CREATE INDEX CONCURRENTLY`/`REINDEX CONCURRENTLY` statement was found. The remaining files use sequential dependencies from the initial schema through Phase 17; local review cannot prove execution against an actual database schema or data set.
+- Follow-up validation: `git diff --check` passed; focused migration tests passed (**2 files, 12 tests**); `npm run lint` passed; `npm run build` passed with the existing large-chunk advisory. An initial lint run caught an unsafe indexed access in the new test assertion; the assertion was corrected and the final lint rerun passed.
+- No remote migration, SQL write, deployment, commit, or push was performed.
+
 ## Required before production
 
 1. Review the Phase 17 migration against the exact existing Supabase migration history, take a backup, apply it only to a disposable staging project first, and run two-tenant/RLS/AAL2/booking/POS/payment/review/storage acceptance tests. No migration was automatically applied.

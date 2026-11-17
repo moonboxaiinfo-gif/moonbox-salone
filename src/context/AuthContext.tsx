@@ -362,6 +362,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: admin, error: adminError } = await supabase.from('platform_admins')
           .select('role').eq('user_id', user.id).maybeSingle();
         if (adminError || admin?.role !== 'superadmin') return { success: false, error: 'Platform administrator authorization is required before MFA enrollment.' };
+
+        const [{ data: factors, error: factorsError }, { data: aal, error: aalError }] = await Promise.all([
+          supabase.auth.mfa.listFactors(),
+          supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        ]);
+        if (factorsError || aalError) {
+          return { success: false, error: factorsError?.message || aalError?.message || 'Administrator MFA status could not be verified.' };
+        }
+        const enrolledFactors = [...(factors.totp || []), ...(factors.phone || [])];
+        const hasVerifiedFactor = enrolledFactors.some(factor => factor.status === 'verified');
+        if (enrolledFactors.some(factor => factor.status !== 'verified')) {
+          return { success: false, error: 'An unfinished MFA enrollment exists. Complete the controlled recovery process before enrolling another factor.' };
+        }
+        if (hasVerifiedFactor && aal?.currentLevel !== 'aal2') {
+          return { success: false, error: 'A current AAL2 session is required to add or replace an administrator MFA factor.' };
+        }
+
         const { data, error } = await supabase.auth.mfa.enroll({
           factorType: 'totp',
           issuer: 'Moonbox Salon Platform',

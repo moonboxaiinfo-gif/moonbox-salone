@@ -165,6 +165,7 @@ export interface StaffWorkingHours {
 export interface Staff {
   id: string;
   tenantId: string;
+  authUserId?: string;
   name: string;
   position: string;
   title?: string;
@@ -179,6 +180,12 @@ export interface Staff {
   };
   color: string; // for calendar display
   createdAt: string;
+}
+
+export interface StaffLoginAccount {
+  userId: string;
+  fullName: string;
+  email: string;
 }
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'checked_in' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';

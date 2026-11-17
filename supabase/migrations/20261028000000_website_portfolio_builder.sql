@@ -1,4 +1,4 @@
--- Moonbox Salon Website & Portfolio Builder
+﻿-- Moonbox Salon Website & Portfolio Builder
 -- Stores draft/live website versions separately and keeps public access limited
 -- to published configuration and approved reviews.
 
@@ -17,7 +17,7 @@ CREATE INDEX IF NOT EXISTS idx_website_configs_status
   ON public.website_configs(status);
 
 CREATE TABLE IF NOT EXISTS public.website_reviews (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   salon_id UUID NOT NULL REFERENCES public.salons(id) ON DELETE CASCADE,
   customer_name TEXT NOT NULL CHECK (char_length(customer_name) BETWEEN 2 AND 60),
   customer_phone TEXT,

@@ -529,9 +529,6 @@ COMMENT ON FUNCTION public.is_super_admin() IS 'True only for an explicitly auth
 COMMENT ON FUNCTION public.salon_has_active_feature(UUID, TEXT) IS 'Server-side subscription status, expiry and feature entitlement check for tenant database operations.';
 COMMENT ON FUNCTION public.enforce_online_booking_boundaries() IS 'Enforces active plan, booking window, salon/staff hours, overlap serialization and per-phone public booking rate limits.';
 
-COMMIT;
-
-
 -- Private bank-slip storage: object paths are tenant-prefixed, uploads are
 -- owner-only, immutable from browser clients, and never anonymously readable.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -677,3 +674,5 @@ DROP TRIGGER IF EXISTS protect_website_review_source_fields ON public.website_re
 CREATE TRIGGER protect_website_review_source_fields
   BEFORE UPDATE ON public.website_reviews
   FOR EACH ROW EXECUTE FUNCTION public.protect_website_review_source_fields();
+
+COMMIT;
