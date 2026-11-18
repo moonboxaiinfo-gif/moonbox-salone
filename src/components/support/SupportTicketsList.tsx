@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { SupportTicket } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { useAuth } from '../../context/AuthContext';
@@ -47,6 +47,9 @@ export const SupportTicketsList: React.FC<SupportTicketsListProps> = ({ tenantId
 
   // Super Admin status update in drawer
   const [updatingStatus, setUpdatingStatus] = useState<SupportTicket['status'] | ''>('');
+  const createSubmittingRef = useRef(false);
+  const replySubmittingRef = useRef(false);
+  const statusSubmittingRef = useRef(false);
 
   // Strict tenant isolation: Super Admin sees all (undefined), Salon owner strictly sees only tenantId
   const effectiveTenantId = isSuperAdmin ? undefined : tenantId;
@@ -67,7 +70,8 @@ export const SupportTicketsList: React.FC<SupportTicketsListProps> = ({ tenantId
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subject.trim() || !message.trim()) return;
+    if (!subject.trim() || !message.trim() || createSubmittingRef.current) return;
+    createSubmittingRef.current = true;
 
     const safeDiagnostic = includeDiagnostics 
       ? `Tenant: ${tenantId} | Viewport: ${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'N/A'} | Timestamp: ${new Date().toISOString()}`
@@ -102,8 +106,10 @@ export const SupportTicketsList: React.FC<SupportTicketsListProps> = ({ tenantId
       await StorageService.createSupportTicketConfirmed(newTicket);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Could not create support ticket. Please try again.');
+      createSubmittingRef.current = false;
       return;
     }
+    createSubmittingRef.current = false;
     setIsNewModalOpen(false);
     setSubject('');
     setMessage('');
@@ -112,15 +118,18 @@ export const SupportTicketsList: React.FC<SupportTicketsListProps> = ({ tenantId
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeTicket || !replyText.trim()) return;
+    if (!activeTicket || !replyText.trim() || replySubmittingRef.current) return;
+    replySubmittingRef.current = true;
 
     try {
       await StorageService.replySupportTicketConfirmed(activeTicket.id, currentUser?.name || (isSuperAdmin ? 'Platform Administrator' : 'Salon User'), isSuperAdmin ? 'support' : 'tenant', replyText.trim(), activeTicket.tenantId);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Could not send reply. Please try again.');
+      replySubmittingRef.current = false;
       return;
     }
 
+    replySubmittingRef.current = false;
     setReplyText('');
     const updated = StorageService.getSupportTickets(effectiveTenantId).find(t => t.id === activeTicket.id);
     if (updated) setActiveTicket(updated);
@@ -128,13 +137,16 @@ export const SupportTicketsList: React.FC<SupportTicketsListProps> = ({ tenantId
   };
 
   const handleStatusChange = async (newStatus: SupportTicket['status']) => {
-    if (!activeTicket) return;
+    if (!activeTicket || statusSubmittingRef.current) return;
+    statusSubmittingRef.current = true;
     try {
       await StorageService.updateTicketStatusConfirmed(activeTicket.id, newStatus, activeTicket.tenantId);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Could not update ticket status. Please try again.');
+      statusSubmittingRef.current = false;
       return;
     }
+    statusSubmittingRef.current = false;
     const updated = StorageService.getSupportTickets(effectiveTenantId).find(t => t.id === activeTicket.id);
     if (updated) setActiveTicket(updated);
     setRefreshKey(k => k + 1);

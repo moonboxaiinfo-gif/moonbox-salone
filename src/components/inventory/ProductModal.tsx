@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Product } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { invalidateTenantData, useTenantProductCategories } from '../../services/asyncDataService';
@@ -32,6 +32,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [expiryDate, setExpiryDate] = useState(product?.expiryDate || '2028-12-31');
   const [isSaving, setIsSaving] = useState(false);
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) setSavedProductId(null);
@@ -41,7 +42,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !sku || isSaving) return;
+    if (!name || !sku || submittingRef.current) return;
+    submittingRef.current = true;
 
     const prod: Product = {
       id: product?.id || `prod_${Date.now()}`,
@@ -78,6 +80,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       window.alert(error instanceof Error ? error.message : 'Could not save product and confirm stock. Please retry.');
       return;
     } finally {
+      submittingRef.current = false;
       setIsSaving(false);
     }
 

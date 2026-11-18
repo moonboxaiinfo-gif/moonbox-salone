@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Staff, StaffWorkingHours } from '../../types';
 import { StorageService } from '../../services/storageService';
 
@@ -30,6 +30,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   const [color, setColor] = useState(staff?.color || '#9E4784');
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -64,7 +65,8 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || saving) return;
+    if (!name.trim() || submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     setErrorMsg(null);
 
@@ -117,6 +119,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : 'Could not save staff member. Please try again.');
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Customer } from '../../types';
 import { StorageService } from '../../services/storageService';
 
@@ -27,6 +27,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [notes, setNotes] = useState(customer?.notes || '');
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,7 +46,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim() || saving) return;
+    if (!name.trim() || !phone.trim() || submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     setErrorMsg(null);
 
@@ -83,6 +85,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : 'Could not save customer. Please try again.');
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   };

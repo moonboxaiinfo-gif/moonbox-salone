@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
@@ -19,8 +19,6 @@ import { InventoryList } from './components/inventory/InventoryList';
 import { ExpenseList } from './components/expenses/ExpenseList';
 import { ExpenseModal } from './components/expenses/ExpenseModal';
 import { CommissionList } from './components/commissions/CommissionList';
-import { ReportsDashboard } from './components/reports/ReportsDashboard';
-import { WebsiteWorkspace, WebsiteUpgradeGate } from './components/website/WebsiteWorkspace';
 import { PublicSalonPage } from './components/public/PublicSalonPage';
 import { PublicBookingFlow } from './components/public/PublicBookingFlow';
 import { NewLandingPage } from './components/public/NewLandingPage';
@@ -31,14 +29,6 @@ import { OnlineBookingManager } from './components/settings/OnlineBookingManager
 import { SupportTicketsList } from './components/support/SupportTicketsList';
 import { NotificationCenter } from './components/notifications/NotificationCenter';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { SuperAdminDashboard } from './components/superadmin/SuperAdminDashboard';
-import { SalonManagement } from './components/superadmin/SalonManagement';
-import { PaymentApprovals } from './components/superadmin/PaymentApprovals';
-import { PlanManagement } from './components/superadmin/PlanManagement';
-import { AnnouncementsManager } from './components/superadmin/AnnouncementsManager';
-import { AuditLogViewer } from './components/superadmin/AuditLogViewer';
-import { PlatformSettings } from './components/superadmin/PlatformSettings';
-import { LandingPageEditor } from './components/superadmin/LandingPageEditor';
 import { EntitlementService } from './services/entitlementService';
 import { Appointment, Invoice } from './types';
 import { Logo } from './components/brand/Logo';
@@ -48,10 +38,30 @@ import { RouterProvider, useRouter } from './context/RouterContext';
 import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { PublicBookingPage } from './components/public/PublicBookingPage';
 import { PublicPortfolioPage } from './components/public/PublicPortfolioPage';
 import { SuperAdminLogin } from './components/superadmin/SuperAdminLogin';
 import { SalonPendingApproval } from './components/auth/SalonPendingApproval';
+
+const SuperAdminDashboard = lazy(() => import('./components/superadmin/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard })));
+const SalonManagement = lazy(() => import('./components/superadmin/SalonManagement').then(module => ({ default: module.SalonManagement })));
+const PaymentApprovals = lazy(() => import('./components/superadmin/PaymentApprovals').then(module => ({ default: module.PaymentApprovals })));
+const PlanManagement = lazy(() => import('./components/superadmin/PlanManagement').then(module => ({ default: module.PlanManagement })));
+const AnnouncementsManager = lazy(() => import('./components/superadmin/AnnouncementsManager').then(module => ({ default: module.AnnouncementsManager })));
+const AuditLogViewer = lazy(() => import('./components/superadmin/AuditLogViewer').then(module => ({ default: module.AuditLogViewer })));
+const PlatformSettings = lazy(() => import('./components/superadmin/PlatformSettings').then(module => ({ default: module.PlatformSettings })));
+const LandingPageEditor = lazy(() => import('./components/superadmin/LandingPageEditor').then(module => ({ default: module.LandingPageEditor })));
+const WebsiteWorkspace = lazy(() => import('./components/website/WebsiteWorkspace').then(module => ({ default: module.WebsiteWorkspace })));
+const WebsiteUpgradeGate = lazy(() => import('./components/website/WebsiteWorkspace').then(module => ({ default: module.WebsiteUpgradeGate })));
+const ReportsDashboard = lazy(() => import('./components/reports/ReportsDashboard').then(module => ({ default: module.ReportsDashboard })));
+
+const RouteLoadingFallback = () => (
+  <div className="flex min-h-48 items-center justify-center" role="status" aria-live="polite">
+    <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#8B5CF6] border-t-transparent" />
+    <span className="sr-only">Loading...</span>
+  </div>
+);
 
 function SalonPlatformMain() {
   const { currentUser, isSuperAdmin, role, switchDemoUser } = useAuth();
@@ -110,6 +120,10 @@ function SalonPlatformMain() {
   // Route 4: Forgot Password Page
   if (route === 'forgot-password') {
     return <ForgotPasswordPage />;
+  }
+
+  if (route === 'reset-password') {
+    return <ResetPasswordPage />;
   }
 
   // Route 5: Public Client Booking Page
@@ -189,7 +203,8 @@ function SalonPlatformMain() {
           {/* SUPER ADMIN PLATFORM AREA                                */}
           {/* ======================================================== */}
           {isSuperAdmin ? (
-            <div className="space-y-6">
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <div className="space-y-6">
               {currentAdminTab === 'admin_dashboard' && (
                 <SuperAdminDashboard onNavigate={(tab) => setCurrentAdminTab(tab)} />
               )}
@@ -231,6 +246,7 @@ function SalonPlatformMain() {
                 </div>
               )}
             </div>
+            </Suspense>
           ) : (
             /* ======================================================== */
             /* SALON OPERATIONS AREA                                   */
@@ -313,18 +329,24 @@ function SalonPlatformMain() {
               )}
 
               {currentSalonTab === 'reports' && (
-                <ReportsDashboard tenantId={tenantId} />
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <ReportsDashboard tenantId={tenantId} />
+                </Suspense>
               )}
 
               {currentSalonTab === 'portfolio' && tenant && (
                 <>
-                  <WebsiteUpgradeGate tenant={tenant} onNavigateSubscription={() => setCurrentSalonTab('subscription')} />
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <WebsiteUpgradeGate tenant={tenant} onNavigateSubscription={() => setCurrentSalonTab('subscription')} />
+                  </Suspense>
                   {EntitlementService.canAccessFeature(tenant, 'portfolio').allowed && (
-                    <WebsiteWorkspace
-                      tenant={tenant}
-                      onOpenPublicPortal={() => navigate(`/portfolio/${tenant.slug}`)}
-                      onTenantUpdated={refreshTenant}
-                    />
+                    <Suspense fallback={<RouteLoadingFallback />}>
+                      <WebsiteWorkspace
+                        tenant={tenant}
+                        onOpenPublicPortal={() => navigate(`/portfolio/${tenant.slug}`)}
+                        onTenantUpdated={refreshTenant}
+                      />
+                    </Suspense>
                   )}
                 </>
               )}

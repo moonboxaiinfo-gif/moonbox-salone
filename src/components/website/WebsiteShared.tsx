@@ -177,8 +177,11 @@ export const ReviewFormModal: React.FC<{
   const [serviceRef, setServiceRef] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = React.useRef(false);
 
   const submit = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     let res: { success: boolean; error?: string };
@@ -200,6 +203,7 @@ export const ReviewFormModal: React.FC<{
         res = WebsiteService.submitPublicReview({ tenantId, ...review });
       }
     }
+    submittingRef.current = false;
     setSubmitting(false);
     if (!res.success) {
       setError(res.error || 'Something went wrong. Please try again.');

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useRouter } from '../../context/RouterContext';
 import { Logo } from '../brand/Logo';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { useTheme } from '../../context/ThemeContext';
@@ -24,6 +25,7 @@ interface SuperAdminLoginProps {
 
 export const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onSuccess, onExitToPublic }) => {
   const { signInSuperAdmin, enrollSuperAdminMFA, verifySuperAdminMFA } = useAuth();
+  const { navigate } = useRouter();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
@@ -235,6 +237,13 @@ export const SuperAdminLogin: React.FC<SuperAdminLoginProps> = ({ onSuccess, onE
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>{isSubmitting ? 'Verifying Credentials...' : 'Continue to Second Factor (MFA)'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                className="w-full text-center text-[11px] font-semibold text-[#8B5CF6] hover:underline dark:text-[#B8A5FF]"
+              >
+                Forgot administrator password?
               </button>
             </form>
           ) : (

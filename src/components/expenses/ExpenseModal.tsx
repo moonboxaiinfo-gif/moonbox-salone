@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Expense, PaymentMethod } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { invalidateTenantData, useTenantExpenseCategories } from '../../services/asyncDataService';
@@ -32,6 +32,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [receiptUrl, setReceiptUrl] = useState(expense?.receiptUrl || '');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const submittingRef = useRef(false);
 
   if (!isOpen) return null;
 
@@ -63,7 +64,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description || amountLKR <= 0 || isSaving) return;
+    if (!description || amountLKR <= 0 || submittingRef.current) return;
+    submittingRef.current = true;
 
     const cat = categories.find(c => c.id === categoryId);
 
@@ -90,6 +92,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setErrorMsg(error instanceof Error ? error.message : 'Could not save expense. Please try again.');
       return;
     } finally {
+      submittingRef.current = false;
       setIsSaving(false);
     }
     onSaved();

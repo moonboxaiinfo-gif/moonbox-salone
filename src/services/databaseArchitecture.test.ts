@@ -13,9 +13,9 @@ describe('Supabase database architecture source contracts', () => {
     const migrations = readdirSync(migrationsDirectory)
       .filter((file) => file.endsWith('.sql'))
       .sort();
-    expect(migrations).toHaveLength(15);
-    expect(migrations[migrations.length - 2]).toBe('20261117180000_phase1_security_corrections.sql');
-    expect(migrations[migrations.length - 1]).toBe('20261117190000_database_architecture_completion.sql');
+    expect(migrations).toHaveLength(16);
+    expect(migrations[migrations.length - 2]).toBe('20261117190000_database_architecture_completion.sql');
+    expect(migrations[migrations.length - 1]).toBe('20261118000000_atomic_superadmin_lifecycle.sql');
     expect(read('20261013000000_initial_schema.sql')).toContain('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
     expect(completionMigration).toContain('trial_ends_at');
     expect(completionMigration).toContain('staff.auth_user_id');
@@ -48,5 +48,20 @@ describe('Supabase database architecture source contracts', () => {
     expect(completionMigration).toContain('CREATE OR REPLACE FUNCTION public.mark_commission_paid');
     expect(completionMigration).toContain("public.has_salon_permission(p_salon_id, 'manage_commissions')");
     expect(completionMigration).toContain("SET status = 'paid', paid_at = now()");
+  });
+
+  it('provides an atomic Super Admin lifecycle RPC without direct split writes', () => {
+    const lifecycleMigration = read('20261118000000_atomic_superadmin_lifecycle.sql');
+    const supabaseAdmin = read('../../netlify/functions/supabase-admin.ts');
+    expect(lifecycleMigration).toMatch(/^\s*BEGIN;\s*$/m);
+    expect(lifecycleMigration.trimEnd()).toMatch(/COMMIT;\s*$/i);
+    expect(lifecycleMigration).toContain('CREATE OR REPLACE FUNCTION public.execute_superadmin_lifecycle');
+    expect(lifecycleMigration).toContain("coalesce(auth.jwt() ->> 'aal', 'aal1') <> 'aal2'");
+    expect(lifecycleMigration).toContain("REVOKE ALL ON FUNCTION public.execute_superadmin_lifecycle");
+    expect(lifecycleMigration).toContain("GRANT EXECUTE ON FUNCTION public.execute_superadmin_lifecycle");
+    expect(lifecycleMigration).toContain("ON CONFLICT (salon_id)");
+    expect(supabaseAdmin).toContain(".rpc('execute_superadmin_lifecycle'");
+    expect(supabaseAdmin).not.toContain("from('salon_subscriptions').upsert");
+    expect(supabaseAdmin).not.toContain("from('salons').update");
   });
 });

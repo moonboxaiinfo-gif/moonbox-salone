@@ -87,7 +87,7 @@ export const ForgotPasswordPage: React.FC = () => {
               Recover Account Access
             </h1>
             <p className="text-xs opacity-75">
-              Enter your registered salon email. We'll send instructions to reset your password.
+              Enter your registered account email. We’ll send instructions to reset your password.
             </p>
           </div>
 
@@ -113,14 +113,20 @@ export const ForgotPasswordPage: React.FC = () => {
                 onClick={() => navigate('/login')}
                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#DE9E74] to-[#C78558] text-[#1B0C2D] font-extrabold text-xs shadow-md mt-2"
               >
-                Return to Sign In
+                Return to Salon Sign In
+              </button>
+              <button
+                onClick={() => navigate('/superadmin')}
+                className="w-full py-2.5 rounded-xl border border-slate-300 text-xs font-bold"
+              >
+                Return to Super Admin Sign In
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold mb-1.5 opacity-90">
-                  Salon Email Address
+                  Account Email Address
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-[#DE9E74] absolute left-3.5 top-3 pointer-events-none" />

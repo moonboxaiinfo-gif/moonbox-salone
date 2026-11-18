@@ -67,6 +67,7 @@ export const POSRegister: React.FC<POSRegisterProps> = ({
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [savingCustomer, setSavingCustomer] = useState(false);
+  const savingCustomerRef = useRef(false);
   
   // Data lists
   const customerResource = useTenantCustomers(tenantId);
@@ -124,7 +125,7 @@ export const POSRegister: React.FC<POSRegisterProps> = ({
     const cleanName = newCustomerName.trim();
     const cleanPhone = newCustomerPhone.trim();
     const phoneDigits = normalizePhone(cleanPhone);
-    if (savingCustomer) return;
+    if (savingCustomerRef.current) return;
     if (!cleanName || phoneDigits.length < 7) {
       setCustomerError('Enter a customer name and a valid phone number.');
       return;
@@ -147,6 +148,7 @@ export const POSRegister: React.FC<POSRegisterProps> = ({
       visitsCount: 0,
       createdAt: new Date().toISOString()
     };
+    savingCustomerRef.current = true;
     setSavingCustomer(true);
     try {
       const savedCustomer = await StorageService.saveCustomerConfirmed(customer);
@@ -162,6 +164,7 @@ export const POSRegister: React.FC<POSRegisterProps> = ({
     } catch (error) {
       setCustomerError(error instanceof Error ? error.message : 'Could not save customer. Please try again.');
     } finally {
+      savingCustomerRef.current = false;
       setSavingCustomer(false);
     }
   };

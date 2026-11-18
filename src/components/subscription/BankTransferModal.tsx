@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { SalonTenant, SubscriptionPlan, BillingCycle, ManualPaymentRequest } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { PrivateReceiptService } from '../../services/privateReceiptService';
@@ -32,12 +32,16 @@ export const BankTransferModal: React.FC<BankTransferModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submittedSuccessfully, setSubmittedSuccessfully] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const uploadingRef = useRef(false);
 
   if (!isOpen) return null;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (uploadingRef.current) return;
 
     if (file.size > 5 * 1024 * 1024) {
       setErrorMsg('Deposit slip image exceeds 5MB.');
@@ -53,20 +57,29 @@ export const BankTransferModal: React.FC<BankTransferModalProps> = ({
     setErrorMsg(null);
     setReceiptFileName(file.name);
     setReceiptUrl('');
+    uploadingRef.current = true;
     setIsUploading(true);
 
-    const upload = await PrivateReceiptService.upload(file, tenant.id);
-    setIsUploading(false);
-    if (!upload.success) {
+    try {
+      const upload = await PrivateReceiptService.upload(file, tenant.id);
+      if (!upload.success) {
+        setReceiptFileName('');
+        setErrorMsg(upload.error || 'Receipt upload failed. Please try again.');
+        return;
+      }
+      setReceiptUrl(upload.path);
+    } catch (error) {
       setReceiptFileName('');
-      setErrorMsg(upload.error || 'Receipt upload failed. Please try again.');
-      return;
+      setErrorMsg(error instanceof Error ? error.message : 'Receipt upload failed. Please try again.');
+    } finally {
+      uploadingRef.current = false;
+      setIsUploading(false);
     }
-    setReceiptUrl(upload.path);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (!bankReference) {
       setErrorMsg('Please enter your Bank Deposit or CEFT Reference Number.');
       return;
@@ -94,10 +107,15 @@ export const BankTransferModal: React.FC<BankTransferModalProps> = ({
       createdAt: new Date().toISOString()
     };
 
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    setErrorMsg(null);
     try {
       await StorageService.submitManualPaymentConfirmed(newReq);
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : 'Payment submission failed. Please try again.');
+      submittingRef.current = false;
+      setIsSubmitting(false);
       return;
     }
     StorageService.logAudit({
@@ -111,6 +129,8 @@ export const BankTransferModal: React.FC<BankTransferModalProps> = ({
     });
 
     setSubmittedSuccessfully(true);
+    submittingRef.current = false;
+    setIsSubmitting(false);
     onSubmitted();
   };
 
@@ -267,10 +287,10 @@ export const BankTransferModal: React.FC<BankTransferModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={isUploading}
+                disabled={isUploading || isSubmitting}
                 className="px-5 py-2.5 text-xs font-bold rounded-xl bg-gradient-to-r from-[#1B0C2D] to-[#421C64] text-[#F3C9AB] hover:from-[#2A113C] hover:to-[#552380] shadow-md transition-all"
               >
-                Submit Payment for Review
+                {isSubmitting ? 'Submitting…' : 'Submit Payment for Review'}
               </button>
             </div>
           </form>

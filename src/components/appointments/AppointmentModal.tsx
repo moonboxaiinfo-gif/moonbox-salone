@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Appointment, Customer, Service, Staff } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { useTenantAppointments, useTenantCatalog, useTenantCustomers, useTenantStaff } from '../../services/asyncDataService';
@@ -48,6 +48,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const [notes, setNotes] = useState(appointment?.notes || '');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const submittingRef = useRef(false);
   const chosenServices = services.filter(s => selectedServiceIds.includes(s.id));
   const qualifiedStaffMembers = staffMembers.filter(member => chosenServices.every(service => service.assignedStaffIds.length === 0 || service.assignedStaffIds.includes(member.id)));
 
@@ -133,7 +134,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       setErrorMsg('This stylist already has an overlapping appointment. Choose another time or stylist.');
       return;
     }
-    if (saving) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
 
     const aptToSave: Appointment = {
@@ -180,6 +182,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : 'Database write failed.');
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   };

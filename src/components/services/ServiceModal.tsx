@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Service } from '../../types';
 import { StorageService } from '../../services/storageService';
 import { useTenantCatalog, useTenantStaff } from '../../services/asyncDataService';
@@ -34,6 +34,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
   const [assignedStaffIds, setAssignedStaffIds] = useState<string[]>(service?.assignedStaffIds || staffList.map(s => s.id));
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -67,7 +68,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || saving) return;
+    if (!name.trim() || submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     setErrorMsg(null);
 
@@ -101,6 +103,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : 'Could not save service. Please try again.');
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   };

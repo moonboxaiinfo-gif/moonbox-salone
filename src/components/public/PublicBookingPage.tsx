@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from '../../context/RouterContext';
 import { StorageService } from '../../services/storageService';
 import { isLocalDemoMode } from '../../services/storageService';
@@ -106,6 +106,7 @@ export const PublicBookingPage: React.FC = () => {
   // Submission & Validation States
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [confirmedBooking, setConfirmedBooking] = useState<Appointment | null>(null);
 
   const allServices = useMemo(
@@ -280,6 +281,7 @@ export const PublicBookingPage: React.FC = () => {
   // Step 3 & Submission: Create Booking
   const handleSubmitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     setErrorMsg(null);
 
     if (!selectedService) {
@@ -342,6 +344,7 @@ export const PublicBookingPage: React.FC = () => {
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -372,7 +375,6 @@ export const PublicBookingPage: React.FC = () => {
 
       let confirmedAppointment = newAppointment;
       if (isSupabaseConfigured) {
-        try {
         const rpcResult = await PublicWebsiteApi.submitBooking(slug, {
           clientName: newAppointment.customerName,
           clientPhone: newAppointment.customerPhone,
@@ -400,10 +402,6 @@ export const PublicBookingPage: React.FC = () => {
           totalPriceLKR: Number(saved.total_price_lkr ?? newAppointment.totalPriceLKR),
           status: String(saved.status || 'pending') as Appointment['status'],
         };
-        } catch (error) {
-          setErrorMsg(error instanceof Error ? error.message : 'The booking service is unavailable. Please try again.');
-          return;
-        }
       } else if (!isLocalDemoMode) {
         setErrorMsg('Online booking is temporarily unavailable because the booking database is not configured.');
         return;
@@ -423,9 +421,10 @@ export const PublicBookingPage: React.FC = () => {
 
       setConfirmedBooking(confirmedAppointment);
       setCurrentStep(4);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to complete booking. Please try again.');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to complete booking. Please try again.');
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };

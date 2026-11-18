@@ -4,6 +4,33 @@ import { StorageService } from '../services/storageService';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { createSupabaseRepository } from '../services/supabaseRepository';
 import { clearAsyncDataCache } from '../services/asyncDataService';
+import { hasPasswordRecoverySession, validatePasswordChange } from '../services/passwordRecovery';
+
+const PASSWORD_RECOVERY_USER_KEY = 'moonbox_password_recovery_user_id';
+
+function readPasswordRecoveryUserId(): string | null {
+  try {
+    return sessionStorage.getItem(PASSWORD_RECOVERY_USER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storePasswordRecoveryUserId(userId: string): void {
+  try {
+    sessionStorage.setItem(PASSWORD_RECOVERY_USER_KEY, userId);
+  } catch (error) {
+    console.warn('[AuthContext] Could not persist password recovery state:', error);
+  }
+}
+
+function clearPasswordRecoveryUserId(): void {
+  try {
+    sessionStorage.removeItem(PASSWORD_RECOVERY_USER_KEY);
+  } catch (error) {
+    console.warn('[AuthContext] Could not clear password recovery state:', error);
+  }
+}
 
 export interface MFAEnrollmentData {
   factorId: string;
@@ -19,6 +46,7 @@ interface AuthContextType {
   isSalonStaff: boolean;
   isLoading: boolean;
   mfaAssuranceLevel: 'aal1' | 'aal2' | null;
+  isPasswordRecovery: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signInSuperAdmin: (email: string, password: string) => Promise<{ 
     success: boolean; 
@@ -38,6 +66,7 @@ interface AuthContextType {
     password: string;
   }) => Promise<{ success: boolean; tenantId?: string; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  completePasswordRecovery: (password: string, confirmation: string) => Promise<{ success: boolean; error?: string; warning?: string }>;
   logout: () => Promise<void>;
   switchDemoUser: (role: 'owner' | 'receptionist' | 'staff' | 'superadmin') => void;
 }
@@ -48,6 +77,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mfaAssuranceLevel, setMfaAssuranceLevel] = useState<'aal1' | 'aal2' | null>(null);
+  const [passwordRecoveryUserId, setPasswordRecoveryUserId] = useState<string | null>(null);
+  const isPasswordRecovery = passwordRecoveryUserId !== null;
 
   // Supabase is the only production identity source. Listen for sign-out and
   // identity changes so cached tenant data can never survive account switches.
@@ -59,6 +90,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearAsyncDataCache();
       setCurrentUser(null);
       setMfaAssuranceLevel(null);
+      setPasswordRecoveryUserId(null);
+      clearPasswordRecoveryUserId();
+    };
+    const restorePasswordRecovery = (userId: string) => {
+      const recoveryUserId = readPasswordRecoveryUserId();
+      if (recoveryUserId === userId) {
+        setPasswordRecoveryUserId(userId);
+      } else if (recoveryUserId) {
+        clearPasswordRecoveryUserId();
+      }
     };
     const hydrateSession = async (expectedUserId: string, revision: number) => {
       try {
@@ -98,7 +139,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           return;
         }
+        if (event === 'PASSWORD_RECOVERY') {
+          setPasswordRecoveryUserId(session.user.id);
+          storePasswordRecoveryUserId(session.user.id);
+        } else if (event === 'INITIAL_SESSION') {
+          restorePasswordRecovery(session.user.id);
+        }
         if (event === 'SIGNED_IN') {
+          setPasswordRecoveryUserId(null);
+          clearPasswordRecoveryUserId();
           StorageService.clearProductionCache();
           clearAsyncDataCache();
           setCurrentUser(null);
@@ -112,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         const { data: { session } } = await supabase!.auth.getSession();
         if (session?.user) {
+          restorePasswordRecovery(session.user.id);
           const revision = ++authRevision;
           await hydrateSession(session.user.id, revision);
         } else if (!disposed) {
@@ -699,7 +749,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: `${window.location.origin}/reset-password`
+          redirectTo: new URL('/reset-password', window.location.origin).toString()
         });
         if (error) return { success: false, error: error.message };
         return { success: true };
@@ -708,13 +758,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Verified email check
-    const user = StorageService.getUserByEmail(email.trim());
-    if (!user) {
-      return { success: false, error: 'No account found with this email address.' };
+    return {
+      success: false,
+      error: 'Secure password recovery is unavailable because Supabase is not configured.'
+    };
+  };
+
+  const completePasswordRecovery = async (
+    password: string,
+    confirmation: string
+  ): Promise<{ success: boolean; error?: string; warning?: string }> => {
+    const validationError = validatePasswordChange(password, confirmation);
+    if (validationError) return { success: false, error: validationError };
+    if (!isSupabaseConfigured || !supabase) {
+      return { success: false, error: 'Secure password recovery is unavailable because Supabase is not configured.' };
     }
 
-    return { success: true };
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) return { success: false, error: sessionError.message };
+      const sessionUserId = sessionData.session?.user.id;
+      if (!sessionUserId || !hasPasswordRecoverySession(isPasswordRecovery, passwordRecoveryUserId, sessionUserId)) {
+        setPasswordRecoveryUserId(null);
+        clearPasswordRecoveryUserId();
+        return { success: false, error: 'This recovery link is invalid, expired, or has already been used. Request a new link to continue.' };
+      }
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user || userData.user.id !== sessionUserId) {
+        setPasswordRecoveryUserId(null);
+        clearPasswordRecoveryUserId();
+        return { success: false, error: 'Your recovery session could not be verified. Request a new link to continue.' };
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) return { success: false, error: updateError.message };
+
+      setPasswordRecoveryUserId(null);
+      clearPasswordRecoveryUserId();
+
+      try {
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) {
+          return {
+            success: true,
+            warning: 'Your password was updated, but this session could not be ended automatically. Sign out before signing in again.'
+          };
+        }
+      } catch {
+        return {
+          success: true,
+          warning: 'Your password was updated, but this session could not be ended automatically. Sign out before signing in again.'
+        };
+      }
+
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Password update failed. Request a new recovery link and try again.'
+      };
+    }
   };
 
   // Secure Sign Out
@@ -730,6 +834,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearAsyncDataCache();
     setCurrentUser(null);
     setMfaAssuranceLevel(null);
+    setPasswordRecoveryUserId(null);
+    clearPasswordRecoveryUserId();
     localStorage.removeItem('moonbox_session_user_id');
     sessionStorage.removeItem('moonbox_superadmin_mfa_verified');
   };
@@ -764,12 +870,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSalonStaff,
         isLoading,
         mfaAssuranceLevel,
+        isPasswordRecovery,
         signIn,
         signInSuperAdmin,
         enrollSuperAdminMFA,
         verifySuperAdminMFA,
         signUpSalon,
         resetPassword,
+        completePasswordRecovery,
         logout,
         switchDemoUser
       }}

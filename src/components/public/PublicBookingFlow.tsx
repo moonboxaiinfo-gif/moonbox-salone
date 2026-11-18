@@ -54,6 +54,7 @@ export const PublicBookingFlow: React.FC<PublicBookingFlowProps> = ({
   const [bookingConfirmation, setBookingConfirmation] = useState<Appointment | null>(null);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const bookingIdempotency = useRef<{ fingerprint: string; key: string } | null>(null);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export const PublicBookingFlow: React.FC<PublicBookingFlowProps> = ({
     e.preventDefault();
     setErrorMsg(null);
 
-    if (isSubmitting) return;
+    if (submittingRef.current) return;
 
     if (!selectedService) {
       setErrorMsg('Please select a service.');
@@ -173,6 +174,7 @@ export const PublicBookingFlow: React.FC<PublicBookingFlowProps> = ({
     if (!bookingIdempotency.current || bookingIdempotency.current.fingerprint !== fingerprint) {
       bookingIdempotency.current = { fingerprint, key: crypto.randomUUID() };
     }
+    submittingRef.current = true;
     setIsSubmitting(true);
     if (isSupabaseConfigured) {
       try {
@@ -207,6 +209,7 @@ export const PublicBookingFlow: React.FC<PublicBookingFlowProps> = ({
         bookingIdempotency.current = null;
       } catch (error) {
         setErrorMsg(error instanceof Error ? error.message : 'The booking service is unavailable.');
+        submittingRef.current = false;
         setIsSubmitting(false);
         return;
       }
@@ -248,6 +251,7 @@ export const PublicBookingFlow: React.FC<PublicBookingFlowProps> = ({
     }
 
     setBookingConfirmation(confirmationAppointment);
+    submittingRef.current = false;
     setIsSubmitting(false);
   };
 

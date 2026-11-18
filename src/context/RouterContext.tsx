@@ -5,6 +5,7 @@ export type AppRoute =
   | 'login'
   | 'register'
   | 'forgot-password'
+  | 'reset-password'
   | 'app'
   | 'superadmin'
   | 'book'
@@ -28,7 +29,7 @@ function getInitialPath(): string {
   return window.location.pathname || '/';
 }
 
-function parseRoute(pathname: string): { route: AppRoute; params: Record<string, string> } {
+export function parseRoute(pathname: string): { route: AppRoute; params: Record<string, string> } {
   // Normalize path
   let cleanPath = pathname.replace(/\/+$/, '') || '/';
   if (cleanPath.startsWith('#/')) {
@@ -44,8 +45,11 @@ function parseRoute(pathname: string): { route: AppRoute; params: Record<string,
   if (cleanPath === '/register' || cleanPath === '/signup') {
     return { route: 'register', params: {} };
   }
-  if (cleanPath === '/forgot-password' || cleanPath === '/reset-password') {
+  if (cleanPath === '/forgot-password') {
     return { route: 'forgot-password', params: {} };
+  }
+  if (cleanPath === '/reset-password') {
+    return { route: 'reset-password', params: {} };
   }
   if (
     cleanPath === '/moonbox-control-portal' || 
